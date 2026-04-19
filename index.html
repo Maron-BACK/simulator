@@ -335,6 +335,22 @@
           <b>주식 · 채권 · 금이 동시에 손실</b>날 수 있습니다. (전통적 분산투자가 흔들리는 구간)</li>
       </ul>
 
+      <div class="small muted" style="margin-top:14px">수명 가정</div>
+      <ul class="small" style="padding-left:18px;line-height:1.7;margin:6px 0 0">
+        <li>수명은 <b>평균 88세, 표준편차 6세</b>의 정규분포 난수로 결정되며 <b>78~102세</b> 범위로 제한됩니다.</li>
+        <li>실제 수명은 <b>비공개</b> — 매 해 "건강 힌트"로만 간접 노출됩니다. (조기 사망/장수 리스크 모두 체험)</li>
+        <li>사망 직전 5년 동안은 <b>긴급지출 이벤트 확률이 25→35→45→55→65%</b>로 상승합니다.</li>
+      </ul>
+
+      <div class="small muted" style="margin-top:14px">은퇴 생활비 U자 곡선</div>
+      <ul class="small" style="padding-left:18px;line-height:1.7;margin:6px 0 0">
+        <li>은퇴 생활비는 매년 물가상승률만큼 정확히 오르는 게 아니라, 연령대별로 다르게 변합니다. (Go-Go → Slow-Go → No-Go)</li>
+        <li>🏃 <b>활동기 (은퇴~74세)</b>: 실질 소비가 <b>천천히 감소</b> → 인플레 <b>-1%p</b> 만큼만 상승.</li>
+        <li>🛋️ <b>안정기 (75세~간병기 전)</b>: 외식·여행 급감 <b>소비 최저점</b> → 인플레 <b>-3%p</b> 만큼만 상승 (낮은 인플레이션 가정 시 감소 가능).</li>
+        <li>🏥 <b>간병기 (사망 직전 5년)</b>: 의료·간병비 급증 → 인플레 <b>+1%p</b> 만큼 더 상승.</li>
+        <li>결과 화면에서 <b>명목 vs 실질 생활비 그래프</b>로 실제 소비 경로를 확인할 수 있습니다.</li>
+      </ul>
+
       <div class="small muted" style="margin-top:14px;font-style:italic">
         ※ 실제 시장 데이터와 완전히 일치하지는 않으며, 은퇴 재테크 의사결정을 체험·학습할 수 있도록 단순화·과장된 가정입니다.
       </div>
@@ -355,7 +371,7 @@
     <div class="small muted" style="margin-bottom:10px">교육용 은퇴자산 시뮬레이터</div>
     <ol class="small" style="padding-left:20px;line-height:1.7">
       <li>매년 시장 상황이 변합니다 (강세/완만/보합/약세/폭락).</li>
-      <li>자산별 수익이 발생하고, 현금에서 <b>연간 생활비</b>가 차감됩니다.</li>
+      <li>자산별 수익이 발생하고, 현금에서 <b>연간 생활비</b>가 차감됩니다. 생활비는 U자 곡선 (활동기 -1%p · 안정기 -3%p · 간병기 +1%p)으로 조정됩니다.</li>
       <li>뉴스 카드가 표시된 뒤, 리밸런싱 여부를 결정합니다.</li>
       <li>슬라이더를 움직이지 않으면 = 현재 비중 유지 (리밸런싱 없음).</li>
       <li><b>긴급 지출 이벤트</b>는 현금 보유량과 <b>무관하게</b> 매년 약 <b>15%</b> 확률로 발생하며, 사망 5년 전부터 매년 +10%씩 올라 마지막 해엔 <b>65%</b>까지 상승합니다.</li>
@@ -442,6 +458,15 @@
       <h3>📉 자산 추이 (실제 vs 목표수익률)</h3>
       <div style="position:relative;height:260px"><canvas id="chart-trend"></canvas></div>
       <div class="muted small" style="margin-top:6px">파란 실선: 실제 자산 · 주황 점선: 목표수익률로만 운용했을 때 · ▲: 긴급지출 발생</div>
+    </div>
+
+    <div class="card">
+      <h3>💸 은퇴 생활비 곡선 (명목 vs 실질)</h3>
+      <div style="position:relative;height:240px"><canvas id="chart-expense"></canvas></div>
+      <div class="muted small" style="margin-top:6px">
+        보라 실선: 실제로 지출한 <b>명목 생활비</b> (U자 곡선 적용) · 청록 점선: 첫해 화폐가치로 환산한 <b>실질 생활비</b><br>
+        활동기(~74세) 인플레 -1%p · 안정기(75세~간병기 전) 인플레 -3%p · 간병기(사망 직전 5년) 인플레 +1%p
+      </div>
     </div>
 
     <div class="card">
@@ -704,11 +729,30 @@ function getHealthHint(age, deathAge){
   return HEALTH_HINTS[bucket];
 }
 
+// 은퇴 생활비 U자 곡선 — 물가상승률에 연령 조정치를 더해 다음 해 생활비를 계산한다.
+//   활동기(은퇴~75세): 인플레 -1%p (소비는 늘지만 둔화)
+//   안정기(75세~사망 5년 전): 인플레 -3%p (외식/여행 감소, 소비 최저점)
+//   간병기(사망 직전 5년): 인플레 +1%p (의료·간병비로 급증)
+// ※ 인플레가 낮으면 음수 조정이 되어 생활비가 줄 수 있음 (의도된 동작).
+function getExpenseInflationAdjustment(age, deathAge){
+  const nextAge = age + 1;
+  const leftAfter = deathAge - nextAge; // 다음 해 기준 사망까지 남은 년수
+  if (leftAfter <= 5) return +0.01;  // 간병기
+  if (nextAge >= 75)  return -0.03;  // 안정기
+  return -0.01;                       // 활동기 (은퇴 직후 ~ 74세)
+}
+function getExpensePhase(age, deathAge){
+  const leftAfter = deathAge - (age + 1);
+  if (leftAfter <= 5) return 'care';   // 간병기
+  if (age + 1 >= 75) return 'stable';  // 안정기
+  return 'active';                      // 활동기
+}
+
 /* ========= 상태 ========= */
 let playerSettings = null;
 let gameState = null;
 let history = [];
-let donutChart = null, trendChart = null, allocChart = null;
+let donutChart = null, trendChart = null, allocChart = null, expenseChart = null;
 
 /* ========= 설정 화면 ========= */
 function bindTargetSliders(){
@@ -1129,6 +1173,7 @@ function confirmRebalance(ctx){
   // 4) 긴급 지출 이벤트 — 현금 보유량과 무관하게 일정 확률로 발생한다.
   //    비상금(연생활비 × EVENT_FUND_MULTIPLE) 보유 시 손실 작음(10~50%) → 현금으로 해결,
   //    비상금 부족 시 큰 손실(50~100%) → 현금 → 채권 → 주식 강제 매각.
+  //    ※ 비상금 판정은 "연초(리밸런싱 직후) 현금"을 기준으로 한다 — 리밸런싱 화면의 충족/미충족 표시와 일치.
   let eventOccurred = false, eventLoss = 0, eventMsg = '';
   let eventHadFund = false;
   const prob = getEventProbability(gameState.currentAge, gameState.deathAge);
@@ -1136,12 +1181,12 @@ function confirmRebalance(ctx){
     eventOccurred = true;
     eventMsg = pick(EVENT_MESSAGES);
     const port = gameState.portfolio;
-    const fundThreshold = gameState.annualExpense * SYSTEM_CONFIG.EVENT_FUND_MULTIPLE;
-    eventHadFund = port.cash >= fundThreshold;
+    const fundThreshold = expense * SYSTEM_CONFIG.EVENT_FUND_MULTIPLE;
+    eventHadFund = startAmounts.cash >= fundThreshold;
     const [lossMin, lossMax] = eventHadFund
       ? [SYSTEM_CONFIG.EVENT_LOSS_FUND_MIN, SYSTEM_CONFIG.EVENT_LOSS_FUND_MAX]
       : [SYSTEM_CONFIG.EVENT_LOSS_BARE_MIN, SYSTEM_CONFIG.EVENT_LOSS_BARE_MAX];
-    eventLoss = gameState.annualExpense * randBetween(lossMin, lossMax);
+    eventLoss = expense * randBetween(lossMin, lossMax);
     let rem = eventLoss;
     for (const k of ['cash','bond','stock']){
       if (rem <= 0) break;
@@ -1300,9 +1345,12 @@ function renderYearResultCard(rec){
   }
 
   $('btn-next-year').addEventListener('click', () => {
+    // U자 곡선 적용: 활동기 -1%p / 안정기 -3%p / 간병기 +1%p
+    const adj = getExpenseInflationAdjustment(gameState.currentAge, gameState.deathAge);
+    const yoy = playerSettings.inflationRate + adj;
+    gameState.annualExpense = Math.max(0, gameState.annualExpense * (1 + yoy));
     gameState.currentAge++;
     gameState.currentYear++;
-    gameState.annualExpense = gameState.annualExpense * (1 + playerSettings.inflationRate);
     nextYearStage();
   });
 }
@@ -1380,6 +1428,29 @@ function renderResultScreen(){
       { label:'실제 자산',         data:actual,   borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,.15)', fill:true,  tension:.2, borderWidth:2, pointRadius:2 },
       { label:'목표 수익률 운용',   data:idealArr, borderColor:'#fb923c', borderDash:[6,4], fill:false, tension:.2, borderWidth:2, pointRadius:0 },
       { label:'긴급지출',           data:eventPoints, borderColor:'#ef4444', backgroundColor:'#ef4444', showLine:false, pointRadius:6, pointStyle:'triangle' },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#f1f5f9' } } },
+      scales:{
+        x:{ ticks:{ color:'#94a3b8' }, grid:{ color:'#334155' } },
+        y:{ ticks:{ color:'#94a3b8', callback:v=>v.toLocaleString()+'만' }, grid:{ color:'#334155' } }
+      }
+    }
+  });
+
+  // Expense chart — 명목 vs 실질 (첫해 화폐가치 환산)
+  const infl = playerSettings.inflationRate;
+  const nominalArr = history.map(r => Math.round(r.annualExpense));
+  const realArr = history.map((r, i) => {
+    const factor = Math.pow(1 + infl, i); // i=0 (1년차) → factor 1
+    return Math.round(r.annualExpense / factor);
+  });
+  if (expenseChart) expenseChart.destroy();
+  expenseChart = new Chart($('chart-expense').getContext('2d'), {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'명목 생활비', data:nominalArr, borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.15)', fill:true,  tension:.25, borderWidth:2, pointRadius:2 },
+      { label:'실질 생활비 (1년차 기준)', data:realArr, borderColor:'#2dd4bf', borderDash:[6,4], fill:false, tension:.25, borderWidth:2, pointRadius:0 },
     ]},
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ labels:{ color:'#f1f5f9' } } },
@@ -1494,6 +1565,26 @@ function renderInsights(avgReturn, avgActual, t){
     items.push({ cls:'bad', html:`💡 기대수익률 ${pctNum(playerSettings.targetReturn)}% 대비 실제 ${pctNum(avgReturn)}% — <b>${pctNum(gap)}p 부족</b>. 계획대로 되지 않는 것이 현실입니다` });
   } else if (gap < -0.01){
     items.push({ cls:'good', html:`💡 기대수익률 ${pctNum(playerSettings.targetReturn)}% 대비 실제 ${pctNum(avgReturn)}% — <b>초과 달성</b>` });
+  }
+
+  // 파산 시: 초기 인출률(첫해 연생활비 / 은퇴 자산) 분석
+  if (gameState.endReason === 'bankrupt'){
+    const firstYearExpense = history[0]?.annualExpense ?? (playerSettings.monthlyExpense * 12);
+    const wr = playerSettings.startAssets > 0 ? (firstYearExpense / playerSettings.startAssets) : 0;
+    const wrPct = (wr * 100).toFixed(1);
+    if (wr > 0.04){
+      items.push({
+        cls: 'bad',
+        html: `🧮 <b>초기 인출률이 높았습니다.</b> 당신이 가정한 첫해 필요 생활비 <b>${fmt(firstYearExpense)}만원</b>은 은퇴자산 <b>${fmt(playerSettings.startAssets)}만원</b>의 <b>${wrPct}%</b>입니다.
+        은퇴 권장 인출률(4% 룰)보다 높기 때문에 시장 변동성 + U자 생활비 증가를 감당하기 어려워 파산 확률이 높아집니다.
+        <br><span class="muted small">→ 필요 생활비를 줄이거나, 국민연금·주택연금 등 추가 소득을 확보해 <b>월 생활비 자체</b>를 낮추는 방향을 권장합니다.</span>`
+      });
+    } else {
+      items.push({
+        cls: 'warn',
+        html: `🧮 초기 인출률은 <b>${wrPct}%</b>로 4% 룰 이내였지만, 시장 변동성·긴급지출·간병기 지출 증가가 겹쳐 파산으로 이어졌습니다. <span class="muted small">(Sequence of Returns Risk)</span>`
+      });
+    }
   }
 
   host.innerHTML = items.map(i => `<div class="insight ${i.cls}">${i.html}</div>`).join('');
